@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Move Block with Arrow Keys</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+<canvas id="myCanvas" width="500" height="500"></canvas>
+<script>
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const client_id = Date.now();
+    const blockSize = 50;
+    const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF"]; // Array of colors for different clients
+    const clientColorMap = {}; // Map to store client colors
+    const clientPositions = {}; // Map to store client positions
+    let x = canvas.width / 2;
+    let y = canvas.height / 2;
+
+    function drawOtherBlock(msg) {
+        const data = JSON.parse(msg);
+        const clientId = data?.client?.id;
+        if (clientId !== client_id) {
+            const color = clientColorMap[clientId] || colors[Object.keys(clientColorMap).length % colors.length];
+            const prevPosition = clientPositions[clientId];
+            if (prevPosition) {
+                ctx.clearRect(prevPosition.x, prevPosition.y, blockSize, blockSize); // Clear previous position
+            }
+            ctx.fillStyle = color;
+            ctx.fillRect(data?.client?.x, data?.client?.y, blockSize, blockSize);
+            clientPositions[clientId] = {x: data?.client?.x, y: data?.client?.y}; // Update client position}
+        }
+    }
+
+    function drawBlock() {
+        const prevPosition = clientPositions[client_id];
+        if (prevPosition) {
+            ctx.clearRect(prevPosition.x, prevPosition.y, blockSize, blockSize); // Clear previous position
+        }
+        ctx.fillStyle = "#d003ff"; // Assuming current client's block color is red
+        ctx.fillRect(x, y, blockSize, blockSize);
+        clientPositions[client_id] = {x: x, y: y}
+    }
+
+    function sendMessage() {
+        ws.send(JSON.stringify({id: client_id, x, y}));
+    }
+
+    function moveBlock(event) {
+        switch (event.key) {
+            case "ArrowLeft":
+                x -= 10;
+                break;
+            case "ArrowRight":
+                x += 10;
+                break;
+            case "ArrowUp":
+                y -= 10;
+                break;
+            case "ArrowDown":
+                y += 10;
+                break;
+        }
+        drawBlock();
+        sendMessage();
+    }
+
+    window.addEventListener("keydown", moveBlock);
+    const ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
+    ws.onmessage = function (event) {
+        drawOtherBlock(event.data);
+    };
+    ws.onopen = function (event) {
+        drawBlock();
+    };
+
+</script>
+</body>
+</html>

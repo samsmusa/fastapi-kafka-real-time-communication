@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat</title>
+</head>
+<body>
+<h1>WebSocket Chat</h1>
+<h2>Your ID: <span id="ws-id"></span></h2>
+<form id="my-form" action="" onsubmit="sendDataToAPI(event)">
+    <input type="text" id="messageText" name="message" autocomplete="off"/>
+    <button>Send</button>
+</form>
+<ul id='messages'>
+</ul>
+<script>
+    var client_id = Date.now()
+    document.querySelector("#ws-id").textContent = client_id;
+    var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
+    ws.onmessage = function (event) {
+        var messages = document.getElementById('messages')
+        var message = document.createElement('li')
+        var content = document.createTextNode(event.data)
+        message.appendChild(content)
+        messages.appendChild(message)
+    };
+
+    function formDataToObject(formData) {
+        const obj = {};
+        for (const [key, value] of formData.entries()) {
+            obj[key] = value;
+        }
+        return obj;
+    }
+
+    function sendMessage(event) {
+        var input = document.getElementById("messageText")
+        ws.send(input.value)
+        input.value = ''
+        event.preventDefault()
+    }
+
+    function sendDataToAPI() {
+        event.preventDefault();
+        const client_id = document.getElementById("ws-id").textContent
+        const formData = new FormData(document.getElementById('my-form'));
+        const apiUrl = `http://localhost:8000/${client_id}/send-msg`;
+
+        console.log(JSON.stringify(formDataToObject(formData)))
+        const requestOptions = {
+            method: 'POST',
+            body: JSON.stringify(formDataToObject(formData)),
+            headers: {
+                "Content-Type": "application/json",
+            },
+        };
+
+
+        fetch(apiUrl, requestOptions)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response from API:', data);
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+    }
+
+</script>
+</body>
+</html>
